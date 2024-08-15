@@ -500,10 +500,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentSaveData:
-    currentLevel: 
-    playerPositionX: 0
-    playerPositionY: 0
-    playerPositionZ: 0
+    currentLevel: level1
+    playerPositionX: -9.296117
+    playerPositionY: -6.15365
+    playerPositionZ: -3.094352
 --- !u!1 &305298483
 GameObject:
   m_ObjectHideFlags: 0
