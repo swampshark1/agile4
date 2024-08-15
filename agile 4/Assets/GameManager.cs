@@ -1,13 +1,10 @@
 using UnityEngine;
-using System.IO;
-using Newtonsoft.Json;
 using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager Instance { get; private set; }
-    public string saveFileName = "savefile.json";
-    private string currentSceneName;
+    public static GameManager Instance;
+    public SaveData currentSaveData;
 
     private void Awake()
     {
@@ -22,59 +19,76 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    // Save the current game state
     public void SaveGame()
     {
-        GameObject player = GameObject.Find("Player");
-        if (player != null)
+        if (Player.Instance != null)
         {
-            PlayerDatas playerData = new PlayerDatas(player.transform.position, player.transform.rotation, SceneManager.GetActiveScene().name);
-            string json = JsonConvert.SerializeObject(playerData, Formatting.Indented);
-            File.WriteAllText(GetSaveFilePath(), json);
-            Debug.Log("Game saved: " + json);
+            SaveData data = new SaveData
+            {
+                currentLevel = SceneManager.GetActiveScene().name,
+                playerPositionX = Player.Instance.transform.position.x,
+                playerPositionY = Player.Instance.transform.position.y,
+                playerPositionZ = Player.Instance.transform.position.z
+            };
+
+            SaveSystem.SaveGame(data);
+        }
+        else
+        {
+            Debug.LogWarning("Player.Instance is not set.");
         }
     }
 
+    // Load the saved game state
     public void LoadGame()
     {
-        if (File.Exists(GetSaveFilePath()))
+        currentSaveData = SaveSystem.LoadGame();
+        if (currentSaveData != null)
         {
-            string json = File.ReadAllText(GetSaveFilePath());
-            PlayerDatas playerData = JsonConvert.DeserializeObject<PlayerDatas>(json);
-            if (playerData != null)
+            if (!string.IsNullOrEmpty(currentSaveData.currentLevel))
             {
-                Vector3 playerPosition = playerData.position.ToVector3();
-                Quaternion playerRotation = playerData.rotation.ToQuaternion();
-                GameObject player = GameObject.Find("Player");
-                if (player != null)
-                {
-                    player.transform.position = playerPosition;
-                    player.transform.rotation = playerRotation;
-                    currentSceneName = playerData.currentMap; // Save the current map name
-                    Debug.Log("Game loaded: Player position = " + playerPosition + ", rotation = " + playerRotation);
-                }
-                else
-                {
-                    Debug.LogWarning("Player GameObject not found during load.");
-                }
+                SceneManager.LoadScene(currentSaveData.currentLevel);
             }
             else
             {
-                Debug.LogWarning("Failed to deserialize PlayerDatas.");
+                Debug.LogWarning("Invalid scene name in save data.");
             }
         }
         else
         {
-            Debug.LogWarning("No save file found.");
+            Debug.LogWarning("No save data found.");
         }
     }
 
-    public string GetCurrentSceneName()
+    // Called when a new scene is loaded
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        return currentSceneName;
-    }
-
-    private string GetSaveFilePath()
-    {
-        return Path.Combine(Application.persistentDataPath, saveFileName);
+        if (currentSaveData != null)
+        {
+            if (Player.Instance != null)
+            {
+                Vector3 playerPosition = new Vector3(currentSaveData.playerPositionX, currentSaveData.playerPositionY, currentSaveData.playerPositionZ);
+                Player.Instance.transform.position = playerPosition;
+            }
+            else
+            {
+                Debug.LogWarning("Player.Instance is not set.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("currentSaveData is null.");
+        }
     }
 }
